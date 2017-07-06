@@ -4,71 +4,76 @@ import io.reactivex.Observable;
 import io.reactivex.Observer;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.subjects.PublishSubject;
+import io.reactivex.subjects.Subject;
 
-import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Created by Bhushan on 7/3/2017.
  */
-public class ReactiveCalcV2 {
-    private final static Scanner scanner = new Scanner(System.in);
+public class ReactiveCalcV3 {
     public static void main(String[] args) throws InterruptedException {
-        Observable<String> observable = Observable.generate(stringEmitter -> stringEmitter.onNext(scanner.next()));
-        observable.subscribe(new Logger());
-        observable.share().subscribe(new Adder());
+        Observable<Integer> subject = PublishSubject.create(e -> {
+            log("Create...");
+            try {
+                for(int i = 1; i <20; i++) {
+                    e.onNext(i);
+                }
+                e.onComplete();
+            } catch (Exception e1) {
+                e.onError(e1);
+            }
+        });
+        subject.subscribe(new Logger());
+        subject.subscribe(new Adder());
     }
 
-    private static class Logger implements Observer<String> {
+    private static class Logger implements Observer<Integer> {
 
         @Override
         public void onSubscribe(Disposable d) {
-            System.out.println("Hooked in logger...");
+            log("Hooked in logger...");
         }
 
         @Override
-        public void onNext(String value) {
-            System.out.println("Processing " + value);
+        public void onNext(Integer value) {
+            log("Processing " + value);
         }
 
         @Override
         public void onError(Throwable e) {
-
+            log("Erred while reading from system.in" + e);
         }
 
         @Override
         public void onComplete() {
-
+            log("Logger onComplete");
         }
     }
 
-    private static class Adder extends Observable<Long> implements Observer<String>{
+    private static class Adder implements Observer<Integer>{
         private LongAdder adder = new LongAdder();
 
         @Override
         public void onSubscribe(Disposable d) {
-            System.out.println("Hooked in adder...");
+            log("Hooked in adder...");
         }
 
         @Override
-        public void onNext(String value) {
-            adder.add(Long.parseLong(value));
-            System.out.println("Sum = "+adder.longValue());
+        public void onNext(Integer value) {
+            adder.add(value);
+            log("Cumulative sum = " + adder.longValue());
         }
+
 
         @Override
         public void onError(Throwable e) {
-            System.out.println("Ignoring error while processing " + e);
+            log("Ignoring error while processing " + e);
         }
 
         @Override
         public void onComplete() {
-        }
-
-        @Override
-        protected void subscribeActual(Observer<? super Long> observer) {
-            observer.onNext(this.adder.longValue());
         }
     }
 
@@ -77,13 +82,13 @@ public class ReactiveCalcV2 {
 
         @Override
         public void onSubscribe(Disposable d) {
-            System.out.println("Hooked in average calc...");
+            log("Hooked in average calc...");
         }
 
         @Override
         public void onNext(Long sum) {
-            System.out.println("Value = " + sum);
-            System.out.println("Avg = " + (sum / count.incrementAndGet()));
+            log("Value = " + sum);
+            log("Avg = " + (sum / count.incrementAndGet()));
         }
 
         @Override
@@ -95,5 +100,9 @@ public class ReactiveCalcV2 {
         public void onComplete() {
 
         }
+    }
+
+    private static void log(String toLog) {
+        System.out.println("[" + Thread.currentThread().getName() + "] " + toLog);
     }
 }
